@@ -9,6 +9,7 @@ import java.util.List;
 
 @Entity
 @Data
+@NamedQuery(name = "User.findByEmail", query = "SELECT u FROM User u WHERE u.email = :email")
 @Table(name = "users")
 public class User {
     @Id

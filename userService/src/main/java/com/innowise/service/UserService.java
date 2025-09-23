@@ -1,5 +1,6 @@
 package com.innowise.service;
 
+import com.innowise.exception.NotFoundException;
 import com.innowise.mapper.UserMapper;
 import com.innowise.model.dto.UserDto;
 import com.innowise.model.entity.User;
@@ -45,7 +46,7 @@ public class UserService {
     @Transactional
     public UserDto updateUser(Long id, UserDto userDto){
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found by ID: " + id));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
 
         user.setName(userDto.getName());
         user.setSurname(userDto.getSurname());

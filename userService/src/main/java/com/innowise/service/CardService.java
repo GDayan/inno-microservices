@@ -1,5 +1,6 @@
 package com.innowise.service;
 
+import com.innowise.exception.NotFoundException;
 import com.innowise.mapper.CardMapper;
 import com.innowise.model.dto.CardDto;
 import com.innowise.model.entity.Card;
@@ -11,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Transactional
@@ -45,12 +45,12 @@ public class CardService {
 
     public CardDto updateCard(Long id, CardDto cardDto){
         Card card = cardRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Card not found by ID: " + id));
+                .orElseThrow(() -> new NotFoundException("Card not found with id: " + id));
         card.setNumber(cardDto.getNumber());
         card.setHolder(cardDto.getHolder());
         card.setExpirationDate(cardDto.getExpirationDate());
         card.setUser(userRepository.findById(cardDto.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found")));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + cardDto.getUserId())));
         return cardMapper.toDto(cardRepository.save(card));
     }
 

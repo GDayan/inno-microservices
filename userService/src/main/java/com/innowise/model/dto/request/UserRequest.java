@@ -1,13 +1,18 @@
-package com.innowise.model.dto;
+package com.innowise.model.dto.request;
 
 import jakarta.validation.constraints.*;
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.util.List;
 
-@Data
-public class UserDto {
+@Builder
+@Getter
+@Setter
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserRequest {
     private Long id;
     @NotBlank(message = "Name is required")
     private String name;
@@ -17,7 +22,6 @@ public class UserDto {
     private LocalDate birthDate;
     @Email(message = "Email must be valid")
     @NotBlank(message = "Email is required")
+    @Size(max = 255, message = "Email must not exceed 255 characters")
     private String email;
-
-    private List<CardDto> cardDto;
 }

@@ -1,16 +1,22 @@
 package com.innowise.mapper;
 
-import com.innowise.model.dto.UserDto;
+import com.innowise.model.dto.request.UserRequest;
+import com.innowise.model.dto.response.UserResponse;
+import com.innowise.model.dto.response.UserWithCardResponse;
 import com.innowise.model.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {CardMapper.class})
+@Mapper(componentModel = "spring")
 public interface UserMapper {
-    UserDto toDto(User user);
-    User toEntity(UserDto userDto);
-    List<UserDto> toDtoList(List<User> user);
-    List<User> toEntityList(List<UserDto> userDtos);
+    User userRequestToUser(UserRequest userRequest);
+
+    void updateUserFromUserRequest(UserRequest userRequest, @MappingTarget User user);
+
+    UserResponse userToUserResponse(User user);
+
+    List<UserResponse> usersToUsersResponse(List<User> users);
 }

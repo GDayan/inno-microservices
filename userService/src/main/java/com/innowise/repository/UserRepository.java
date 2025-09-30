@@ -2,18 +2,23 @@ package com.innowise.repository;
 
 import com.innowise.model.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
 
-    @Query("SELECT u FROM User u WHERE u.id  IN :ids")
-    List<User> findByIds(@Param("ids") List<Long> ids);
+    Optional<User> getByEmail(String email);
+    @Query("SELECT u FROM User u WHERE u.id IN :ids")
+    List<User> getByIds(List<Long> ids);
+    @Modifying
+    @Query(value = "DELETE FROM users AS u WHERE u.id = :id", nativeQuery = true)
+    void deleteById(Long id);
 
-    @Query(value = "SELECT * FROM users WHERE surname = :surname", nativeQuery = true)
-    List<User> findDySurnameNative(@Param("surname") String surname);
+    boolean existsByEmail(String email);
+
 }

@@ -1,50 +1,58 @@
 package com.innowise.controller;
 
-import com.innowise.model.dto.*;
+import com.innowise.model.dto.request.*;
+import com.innowise.model.dto.response.*;
 import com.innowise.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/users")
+@RequestMapping("/api/v1/users")
 public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<UserDto> create(@Valid @RequestBody UserDto user) {
-        UserDto created = userService.create(user);
-        return ResponseEntity.created(URI.create("/users/" + created.getId())).body(created);
+    public ResponseEntity<UserResponse> save(@RequestBody @Valid UserRequest userRequest){
+        UserResponse userResponse = userService.save(userRequest);
+        return ResponseEntity.ok(userResponse);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getById(id));
+    public ResponseEntity<UserResponse> findById(@PathVariable("id") Long id) {
+        UserResponse user = userService.findById(id);
+
+        return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/batch")
-    public ResponseEntity<List<UserDto>> getByIds(@RequestParam List<Long> ids) {
-        return ResponseEntity.ok(userService.getUserByIds(ids));
+    @GetMapping
+    public ResponseEntity<List<UserResponse>> findByFilter(
+            @RequestParam(required = false, defaultValue = "pageable") String filter,
+            @RequestParam(required = false) List<Long> ids,
+            @RequestParam(required = false) String email,
+            Pageable pageable) {
+
+        return switch (filter) {
+            case "ids" -> ResponseEntity.ok(userService.findByIds(ids));
+            case "email" -> ResponseEntity.ok(List.of(userService.findUserByEmail(email)));
+            default -> ResponseEntity.ok(userService.findAll(pageable));
+        };
     }
 
-    @GetMapping("/email/{email}")
-    public ResponseEntity<UserDto> getByEmail(@PathVariable String email) {
-        return ResponseEntity.ok(userService.getUserByEmail(email));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<UserDto> update(@PathVariable Long id, @Valid @RequestBody UserDto userDto) {
-        return ResponseEntity.ok(userService.updateUser(id, userDto));
+    @PatchMapping("/{id}")
+    public ResponseEntity<UserResponse> update(@PathVariable("id") Long id, @RequestBody @Valid UserRequest userRequest){
+        UserResponse user = userService.updateById(id, userRequest);
+        return ResponseEntity.ok(user);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        userService.deleteUser(id);
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id){
+        userService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 }

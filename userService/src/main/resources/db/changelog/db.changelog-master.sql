@@ -20,4 +20,3 @@ CREATE TABLE card_info (
                            CONSTRAINT fk_cardinfo_user FOREIGN KEY (user_id)
                                REFERENCES users(id) ON DELETE CASCADE
 );
-

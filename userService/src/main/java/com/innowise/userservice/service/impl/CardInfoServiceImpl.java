@@ -12,6 +12,7 @@ import com.innowise.userservice.service.CardInfoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -25,11 +26,17 @@ import java.util.stream.Collectors;
 @Transactional
 @RequiredArgsConstructor
 public class CardInfoServiceImpl implements CardInfoService {
+
     private final CardInfoRepository cardInfoRepository;
     private final UserRepository userRepository;
     private final CardInfoMapper cardInfoMapper;
 
+    // ---------------------- CREATE ----------------------
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "cardInfo", allEntries = true),
+            @CacheEvict(value = "cardsByUser", key = "#cardInfoDto.userId")
+    })
     public CardInfoDto saveCard(CardInfoDto cardInfoDto) {
         User user = userRepository.findById(cardInfoDto.getUserId())
                 .orElseThrow(() -> new NotFoundException("User", cardInfoDto.getUserId()));
@@ -40,30 +47,25 @@ public class CardInfoServiceImpl implements CardInfoService {
         cardInfo.setUser(user);
 
         CardInfo savedCard = cardInfoRepository.save(cardInfo);
-
         return cardInfoMapper.cardInfoToCardInfoDto(savedCard);
     }
 
+    // ---------------------- READ ----------------------
     @Override
+    @Cacheable(value = "cardInfo", key = "#id", condition = "#id != null")
     @Transactional(readOnly = true)
     public CardInfoDto findCardById(Long id) {
+        log.info("Fetching card ID {} from DB (cache miss)", id);
         return cardInfoRepository.findById(id)
                 .map(cardInfoMapper::cardInfoToCardInfoDto)
                 .orElseThrow(() -> new NotFoundException("Card", id));
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<CardInfoDto> findCardsByIds(List<Long> ids) {
-        return cardInfoRepository.findByIds(ids).stream()
-                .map(cardInfoMapper::cardInfoToCardInfoDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
+    @Cacheable(value = "cardsByUser", key = "#userId", condition = "#userId != null")
     @Transactional(readOnly = true)
     public List<CardInfoDto> findCardsByUserId(Long userId) {
-        log.info("Fetching cards for user ID: {}", userId);
+        log.info("Fetching cards for user ID {} from DB (cache miss)", userId);
 
         if (!userRepository.existsById(userId)) {
             throw new NotFoundException("User", userId);
@@ -76,6 +78,19 @@ public class CardInfoServiceImpl implements CardInfoService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<CardInfoDto> findCardsByIds(List<Long> ids) {
+        return cardInfoRepository.findByIds(ids).stream()
+                .map(cardInfoMapper::cardInfoToCardInfoDto)
+                .collect(Collectors.toList());
+    }
+
+    // ---------------------- UPDATE ----------------------
+    @Override
+    @Caching(evict = {
+            @CacheEvict(value = "cardInfo", key = "#id"),
+            @CacheEvict(value = "cardsByUser", key = "#cardInfoDto.userId")
+    })
     public CardInfoDto updateCard(Long id, CardInfoDto cardInfoDto) {
         CardInfo existingCard = cardInfoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Card", id));
@@ -95,48 +110,49 @@ public class CardInfoServiceImpl implements CardInfoService {
             validateCardHolder(existingCard.getUser(), cardInfoDto.getHolder());
         }
 
-        if (cardInfoDto.getNumber() != null) {
-            existingCard.setNumber(cardInfoDto.getNumber());
-        }
-        if (cardInfoDto.getHolder() != null) {
-            existingCard.setHolder(cardInfoDto.getHolder());
-        }
-        if (cardInfoDto.getExpirationDate() != null) {
-            existingCard.setExpirationDate(cardInfoDto.getExpirationDate());
-        }
+        if (cardInfoDto.getNumber() != null) existingCard.setNumber(cardInfoDto.getNumber());
+        if (cardInfoDto.getHolder() != null) existingCard.setHolder(cardInfoDto.getHolder());
+        if (cardInfoDto.getExpirationDate() != null) existingCard.setExpirationDate(cardInfoDto.getExpirationDate());
 
         CardInfo updatedCard = cardInfoRepository.save(existingCard);
-
         return cardInfoMapper.cardInfoToCardInfoDto(updatedCard);
     }
 
+    // ---------------------- DELETE ----------------------
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "cardInfo", key = "#id"),
+            @CacheEvict(value = "cardsByUser", allEntries = true)
+    })
     @Transactional
     public void deleteCard(Long id) {
         CardInfo card = cardInfoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Card", id));
-
         cardInfoRepository.deleteByIdNative(id);
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "cardsByUser", key = "#userId"),
+            @CacheEvict(value = "cardInfo", allEntries = true)
+    })
     public void deleteCardsByUserId(Long userId) {
         log.info("Deleting cards for user ID: {}", userId);
         cardInfoRepository.deleteAllByUserId(userId);
         log.info("Cards deleted successfully for user ID: {}", userId);
     }
 
+    // ---------------------- VALIDATION ----------------------
     private void validateCardHolder(User user, String cardHolder) {
         String expectedHolder = user.getName() + " " + user.getSurname();
         String normalizedCardHolder = cardHolder.trim();
         String normalizedExpectedHolder = expectedHolder.trim();
 
         if (!normalizedCardHolder.equalsIgnoreCase(normalizedExpectedHolder)) {
-            String errorMessage = String.format(
-                    "Card holder name '%s' does not match user name '%s %s'. Expected: '%s'",
-                    cardHolder, user.getName(), user.getSurname(), expectedHolder
+            throw new CardValidationException(
+                    String.format("Card holder name '%s' does not match user name '%s %s'. Expected: '%s'",
+                            cardHolder, user.getName(), user.getSurname(), expectedHolder)
             );
-            throw new CardValidationException(errorMessage);
         }
     }
 }

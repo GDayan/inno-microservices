@@ -9,8 +9,8 @@ spring:
       password:
       database: 0
 
-    cache:
-      type: redis
+  cache:
+    type: redis
 
   datasource:
     url: jdbc:postgresql://localhost:5433/postgres

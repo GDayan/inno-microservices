@@ -35,19 +35,4 @@ public class User {
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CardInfo> cardInfos = new ArrayList<>();
-
-    public void addCard(CardInfo card) {
-        cardInfos.add(card);
-        card.setUser(this);
-    }
-
-    public void removeCard(CardInfo card) {
-        cardInfos.remove(card);
-        card.setUser(null);
-    }
-
-    public void removeAllCards() {
-        cardInfos.forEach(card -> card.setUser(null));
-        cardInfos.clear();
-    }
 }

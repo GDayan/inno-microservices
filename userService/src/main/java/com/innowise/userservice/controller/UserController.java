@@ -58,11 +58,11 @@ public class UserController {
      * @param ids list of user IDs to retrieve
      * @return ResponseEntity containing list of users and HTTP status 200 (OK)
      */
-    @GetMapping
-    public ResponseEntity<List<UserDto>> findByIds(@RequestParam("ids") List<Long> ids) {
-        List<UserDto> users = userService.findByIds(ids);
-        return ResponseEntity.ok(users);
-    }
+//    @GetMapping
+//    public ResponseEntity<List<UserDto>> findByIds(@RequestParam("ids") List<Long> ids) {
+//        List<UserDto> users = userService.findByIds(ids);
+//        return ResponseEntity.ok(users);
+//    }
 
     /**
      * Retrieves a user by their email address.

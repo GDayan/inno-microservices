@@ -12,10 +12,13 @@ import com.innowise.userservice.service.CardInfoService;
 import com.innowise.userservice.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,8 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final CardInfoService cardInfoService;
+    private final CacheManager cacheManager;
+
 
     @Override
     public UserDto save(UserDto userDto) {
@@ -47,10 +52,11 @@ public class UserServiceImpl implements UserService {
         return userMapper.userToUserDto(savedUser);
     }
 
+    @Cacheable(cacheNames = "users", key = "#id", condition = "#id != null")
     @Override
     @Transactional(readOnly = true)
     public UserDto findById(Long id) {
-
+        log.info("CACHE KEY id = {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("User", id));
 
@@ -68,12 +74,26 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserDto findUserByEmail(String email) {
+        Long id = cacheManager.getCache("emails").get(email, Long.class);
+        if (id != null) {
+            UserDto cachedUser = cacheManager.getCache("users").get(id, UserDto.class);
+            if (cachedUser != null) {
+                return cachedUser;
+            }
+        }
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("User", email));
 
-        return userMapper.userToUserDto(user);
+        UserDto userDto = userMapper.userToUserDto(user);
+
+        cacheManager.getCache("emails").put(email, user.getId());
+        cacheManager.getCache("users").put(user.getId(), userDto);
+
+        return userDto;
     }
 
+    @CacheEvict(cacheNames = "users", key = "#id", condition = "#id != null")
     @Override
     public UserDto update(Long id, UserDto userDto) {
         log.info("Updating user with ID: {}", id);
@@ -93,6 +113,11 @@ public class UserServiceImpl implements UserService {
         return userMapper.userToUserDto(updatedUser);
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "users", key = "#id", condition = "#id != null"),
+            @CacheEvict(cacheNames = "users-with-cards", key = "#id", condition = "#id != null"),
+            @CacheEvict(cacheNames = "emails", allEntries = true)
+    })
     @Override
     public void deleteByIdNative(Long id) {
         log.info("Deleting user with ID: {}", id);
@@ -107,6 +132,8 @@ public class UserServiceImpl implements UserService {
         log.info("User deleted successfully with ID: {}", id);
     }
 
+
+    @Cacheable(cacheNames = "users-with-cards", key = "#id", condition = "#id != null")
     @Override
     @Transactional(readOnly = true)
     public UserWithCardsDto findUserWithCardsById(Long id) {

@@ -40,6 +40,40 @@ public class UserController {
     }
 
     /**
+     * Retrieves users based on optional filters:
+     *  - GET /api/v1/users?email={email} → returns one user by email
+     *  - GET /api/v1/users?ids=1,2,3    → returns list of users by ids
+     *
+     * If neither parameter is provided → returns 400 Bad Request
+     * If both are provided simultaneously → returns 400 Bad Request
+     *
+     * @param ids   optional list of ids
+     * @param email optional email filter
+     * @return ResponseEntity containing user data or list of users
+     */
+    @GetMapping
+    public ResponseEntity<?> find(
+            @RequestParam(required = false) List<Long> ids,
+            @RequestParam(required = false) String email
+    ) {
+        if (email != null && ids != null) {
+            return ResponseEntity.badRequest().body("Please provide either 'email' OR 'ids', not both.");
+        }
+
+        if (email != null) {
+            UserDto user = userService.findUserByEmail(email);
+            return ResponseEntity.ok(user);
+        }
+
+        if (ids != null && !ids.isEmpty()) {
+            List<UserDto> users = userService.findByIds(ids);
+            return ResponseEntity.ok(users);
+        }
+
+        return ResponseEntity.badRequest().body("Please specify either 'email' or 'ids' query parameter");
+    }
+
+    /**
      * Retrieves a user by their ID.
      *
      * @param id the ID of the user to retrieve
@@ -49,31 +83,6 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserDto> findById(@PathVariable("id") Long id) {
         UserDto user = userService.findById(id);
-        return ResponseEntity.ok(user);
-    }
-
-    /**
-     * Retrieves multiple users by their IDs.
-     *
-     * @param ids list of user IDs to retrieve
-     * @return ResponseEntity containing list of users and HTTP status 200 (OK)
-     */
-//    @GetMapping
-//    public ResponseEntity<List<UserDto>> findByIds(@RequestParam("ids") List<Long> ids) {
-//        List<UserDto> users = userService.findByIds(ids);
-//        return ResponseEntity.ok(users);
-//    }
-
-    /**
-     * Retrieves a user by their email address.
-     *
-     * @param email the email address to search for
-     * @return ResponseEntity containing the user and HTTP status 200 (OK)
-     * @throws com.innowise.userservice.exception.NotFoundException if user with given email is not found
-     */
-    @GetMapping("/by-email")
-    public ResponseEntity<UserDto> findUserByEmail(@RequestParam("email") String email) {
-        UserDto user = userService.findUserByEmail(email);
         return ResponseEntity.ok(user);
     }
 
@@ -105,11 +114,11 @@ public class UserController {
     }
 
     /**
-     * Retrieves a user with all their cards (cached in Redis)
+     * Retrieves a user along with all their cards.
+     * Data may be cached in Redis.
      *
-     * @param id the ID of the user to retrieve with cards
+     * @param id the ID of the user to retrieve with their associated cards
      * @return ResponseEntity containing the user with cards and HTTP status 200 (OK)
-     * @throws com.innowise.userservice.exception.NotFoundException if user with given ID is not found
      */
     @GetMapping("/{id}/with-cards")
     public ResponseEntity<UserWithCardsDto> findUserWithCardsById(@PathVariable("id") Long id) {

@@ -34,13 +34,9 @@ public class CardInfoController {
      * @throws com.innowise.userservice.exception.CardValidationException if card validation fails
      */
     @PostMapping
-    public ResponseEntity<?> saveCard(@RequestBody CardInfoDto cardInfoDto) {
-        try {
-            CardInfoDto createdCard = cardInfoService.saveCard(cardInfoDto);
-            return new ResponseEntity<>(createdCard, HttpStatus.CREATED);
-        } catch (Exception e) {
-            throw e;
-        }
+    public ResponseEntity<CardInfoDto> saveCard(@RequestBody CardInfoDto cardInfoDto) {
+        CardInfoDto createdCard = cardInfoService.saveCard(cardInfoDto);
+        return new ResponseEntity<>(createdCard, HttpStatus.CREATED);
     }
 
     /**
@@ -75,10 +71,9 @@ public class CardInfoController {
      * @return ResponseEntity containing list of user's cards and HTTP status 200 (OK)
      * @throws com.innowise.userservice.exception.NotFoundException if user with given ID is not found
      */
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<CardInfoDto>> findCardsByUserId(@PathVariable("userId") Long userId) {
-        List<CardInfoDto> cards = cardInfoService.findCardsByUserId(userId);
-        return ResponseEntity.ok(cards);
+    @GetMapping("/api/v1/users/{userId}/cards")
+    public ResponseEntity<List<CardInfoDto>> findCardsByUserId(@PathVariable Long userId) {
+        return ResponseEntity.ok(cardInfoService.findCardsByUserId(userId));
     }
 
     /**

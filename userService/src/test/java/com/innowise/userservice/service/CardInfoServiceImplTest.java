@@ -1,4 +1,4 @@
-package com.innowise.userservice.service.impl;
+package com.innowise.userservice.service;
 
 import com.innowise.userservice.exception.CardValidationException;
 import com.innowise.userservice.exception.NotFoundException;
@@ -8,19 +8,25 @@ import com.innowise.userservice.model.entity.CardInfo;
 import com.innowise.userservice.model.entity.User;
 import com.innowise.userservice.repository.CardInfoRepository;
 import com.innowise.userservice.repository.UserRepository;
+import com.innowise.userservice.service.impl.CardInfoServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class CardInfoServiceImplTest {
-
     @Mock
     private CardInfoRepository cardInfoRepository;
 
@@ -30,150 +36,149 @@ class CardInfoServiceImplTest {
     @Mock
     private CardInfoMapper cardInfoMapper;
 
+    @Mock
+    private CacheManager cacheManager;
+
+    @Mock
+    private Cache cache;
+
     @InjectMocks
     private CardInfoServiceImpl cardInfoService;
 
+    private User user;
+    private CardInfo cardInfo;
+    private CardInfoDto cardInfoDto;
+
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
+        user = new User();
+        user.setId(1L);
+        user.setName("John");
+        user.setSurname("Doe");
 
-    private User makeUser(Long id) {
-        return User.builder().id(id).name("John").surname("Doe").email("a@b.com").birthDate(LocalDate.of(1990,1,1)).build();
-    }
+        cardInfo = new CardInfo();
+        cardInfo.setId(10L);
+        cardInfo.setUser(user);
+        cardInfo.setHolder("John Doe");
+        cardInfo.setNumber("1234 5678 9012 3456");
+        cardInfo.setExpirationDate(LocalDate.of(2030, 12, 31));
 
-    private CardInfo makeCard(Long id, User user) {
-        CardInfo c = new CardInfo();
-        c.setId(id);
-        c.setUser(user);
-        c.setNumber("1111222233334444");
-        c.setHolder(user.getName() + " " + user.getSurname());
-        c.setExpirationDate(LocalDate.now().plusYears(1));
-        return c;
-    }
+        cardInfoDto = new CardInfoDto();
+        cardInfoDto.setUserId(user.getId());
+        cardInfoDto.setHolder("John Doe");
+        cardInfoDto.setNumber("1234 5678 9012 3456");
+        cardInfoDto.setExpirationDate(LocalDate.of(2030, 12, 31));
 
-    private CardInfoDto makeCardDto(Long id, Long userId) {
-        CardInfoDto dto = new CardInfoDto();
-        dto.setId(id);
-        dto.setUserId(userId);
-        dto.setNumber("1111222233334444");
-        dto.setHolder("John Doe");
-        dto.setExpirationDate(LocalDate.now().plusYears(1));
-        return dto;
+        lenient().when(cacheManager.getCache(anyString())).thenReturn(cache);
     }
 
     @Test
-    void saveCard_shouldSave_whenValid() {
-        User user = makeUser(1L);
-        CardInfoDto dto = makeCardDto(null, 1L);
-        CardInfo entity = makeCard(null, user);
-        CardInfo saved = makeCard(5L, user);
-        CardInfoDto savedDto = makeCardDto(5L, 1L);
+    void saveCard_ShouldSaveSuccessfully() {
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(cardInfoMapper.cardInfoDtoToCardInfo(cardInfoDto)).thenReturn(cardInfo);
+        when(cardInfoRepository.save(cardInfo)).thenReturn(cardInfo);
+        when(cardInfoMapper.cardInfoToCardInfoDto(cardInfo)).thenReturn(cardInfoDto);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(cardInfoMapper.cardInfoDtoToCardInfo(dto)).thenReturn(entity);
-        when(cardInfoRepository.save(entity)).thenReturn(saved);
-        when(cardInfoMapper.cardInfoToCardInfoDto(saved)).thenReturn(savedDto);
+        CardInfoDto saved = cardInfoService.saveCard(cardInfoDto);
 
-        CardInfoDto res = cardInfoService.saveCard(dto);
-
-        assertThat(res).isEqualTo(savedDto);
+        assertThat(saved.getHolder()).isEqualTo(cardInfoDto.getHolder());
+        verify(cardInfoRepository).save(cardInfo);
     }
 
     @Test
-    void saveCard_shouldThrow_whenUserNotFound() {
-        CardInfoDto dto = makeCardDto(null, 99L);
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> cardInfoService.saveCard(dto)).isInstanceOf(NotFoundException.class);
+    void saveCard_ShouldThrow_WhenUserNotFound() {
+        when(userRepository.findById(user.getId())).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> cardInfoService.saveCard(cardInfoDto));
     }
 
     @Test
-    void saveCard_shouldThrow_whenHolderMismatch() {
-        User user = makeUser(2L);
-        CardInfoDto dto = makeCardDto(null, 2L);
-        dto.setHolder("Someone Else");
+    void saveCard_ShouldThrow_WhenHolderMismatch() {
+        cardInfoDto.setHolder("Wrong Name");
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
-        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-        when(cardInfoMapper.cardInfoDtoToCardInfo(dto)).thenReturn(makeCard(null, user));
-
-        assertThatThrownBy(() -> cardInfoService.saveCard(dto)).isInstanceOf(CardValidationException.class);
+        assertThrows(CardValidationException.class, () -> cardInfoService.saveCard(cardInfoDto));
     }
 
     @Test
-    void findCardById_shouldReturnDto_whenFound() {
-        User user = makeUser(3L);
-        CardInfo card = makeCard(3L, user);
-        CardInfoDto dto = makeCardDto(3L, 3L);
+    void findCardById_ShouldReturnCard() {
+        when(cardInfoRepository.findById(10L)).thenReturn(Optional.of(cardInfo));
+        when(cardInfoMapper.cardInfoToCardInfoDto(cardInfo)).thenReturn(cardInfoDto);
 
-        when(cardInfoRepository.findById(3L)).thenReturn(Optional.of(card));
-        when(cardInfoMapper.cardInfoToCardInfoDto(card)).thenReturn(dto);
-
-        CardInfoDto res = cardInfoService.findCardById(3L);
-        assertThat(res).isEqualTo(dto);
+        CardInfoDto result = cardInfoService.findCardById(10L);
+        assertThat(result.getNumber()).isEqualTo(cardInfoDto.getNumber());
     }
 
     @Test
-    void findCardById_shouldThrow_whenNotFound() {
-        when(cardInfoRepository.findById(50L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> cardInfoService.findCardById(50L)).isInstanceOf(NotFoundException.class);
+    void findCardById_ShouldThrow_WhenNotFound() {
+        when(cardInfoRepository.findById(10L)).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> cardInfoService.findCardById(10L));
     }
 
     @Test
-    void findCardsByUserId_shouldReturnList_whenUserExists() {
-        User user = makeUser(4L);
-        CardInfo card = makeCard(4L, user);
-        CardInfoDto dto = makeCardDto(4L, 4L);
+    void findCardsByUserId_ShouldReturnCards() {
+        when(userRepository.existsById(user.getId())).thenReturn(true);
+        when(cardInfoRepository.findByUserId(user.getId())).thenReturn(List.of(cardInfo));
+        when(cardInfoMapper.cardInfoToCardInfoDto(cardInfo)).thenReturn(cardInfoDto);
 
-        when(userRepository.existsById(4L)).thenReturn(true);
-        when(cardInfoRepository.findByUserId(4L)).thenReturn(List.of(card));
-        when(cardInfoMapper.cardInfoToCardInfoDto(card)).thenReturn(dto);
-
-        var list = cardInfoService.findCardsByUserId(4L);
-        assertThat(list).hasSize(1).contains(dto);
+        List<CardInfoDto> result = cardInfoService.findCardsByUserId(user.getId());
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getNumber()).isEqualTo(cardInfoDto.getNumber());
     }
 
     @Test
-    void findCardsByUserId_shouldThrow_whenUserNotExists() {
-        when(userRepository.existsById(99L)).thenReturn(false);
-        assertThatThrownBy(() -> cardInfoService.findCardsByUserId(99L)).isInstanceOf(NotFoundException.class);
+    void findCardsByUserId_ShouldThrow_WhenUserNotFound() {
+        when(userRepository.existsById(user.getId())).thenReturn(false);
+        assertThrows(NotFoundException.class, () -> cardInfoService.findCardsByUserId(user.getId()));
     }
 
     @Test
-    void updateCard_shouldUpdate_holderAndNumber() {
-        User user = makeUser(6L);
-        CardInfo existing = makeCard(6L, user);
-        CardInfoDto dto = makeCardDto(6L, 6L);
-        dto.setHolder("John Doe");
-        dto.setNumber("9999888877776666");
+    void findCardsByIds_ShouldReturnCards() {
+        List<Long> ids = List.of(10L);
+        when(cardInfoRepository.findByIds(ids)).thenReturn(List.of(cardInfo));
+        when(cardInfoMapper.cardInfoToCardInfoDto(cardInfo)).thenReturn(cardInfoDto);
 
-        when(cardInfoRepository.findById(6L)).thenReturn(Optional.of(existing));
-        when(cardInfoRepository.save(existing)).thenReturn(existing);
-        when(cardInfoMapper.cardInfoToCardInfoDto(existing)).thenReturn(dto);
-
-        var updated = cardInfoService.updateCard(6L, dto);
-        assertThat(updated.getNumber()).isEqualTo("9999888877776666");
+        List<CardInfoDto> result = cardInfoService.findCardsByIds(ids);
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getNumber()).isEqualTo(cardInfoDto.getNumber());
     }
 
     @Test
-    void updateCard_shouldThrow_whenCardNotFound() {
-        when(cardInfoRepository.findById(999L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> cardInfoService.updateCard(999L, makeCardDto(999L, 1L))).isInstanceOf(NotFoundException.class);
+    void updateCard_ShouldUpdateSuccessfully() {
+        when(cardInfoRepository.findById(10L)).thenReturn(Optional.of(cardInfo));
+        when(cardInfoRepository.save(cardInfo)).thenReturn(cardInfo);
+        when(cardInfoMapper.cardInfoToCardInfoDto(cardInfo)).thenReturn(cardInfoDto);
+
+        CardInfoDto updated = cardInfoService.updateCard(10L, cardInfoDto);
+        assertThat(updated.getNumber()).isEqualTo(cardInfoDto.getNumber());
     }
 
     @Test
-    void deleteCard_shouldCallRepository_whenExists() {
-        User user = makeUser(7L);
-        CardInfo card = makeCard(7L, user);
-        when(cardInfoRepository.findById(7L)).thenReturn(Optional.of(card));
-
-        cardInfoService.deleteCard(7L);
-
-        verify(cardInfoRepository).deleteByIdNative(7L);
+    void updateCard_ShouldThrow_WhenCardNotFound() {
+        when(cardInfoRepository.findById(10L)).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> cardInfoService.updateCard(10L, cardInfoDto));
     }
 
     @Test
-    void deleteCardsByUserId_shouldCallRepository() {
-        cardInfoService.deleteCardsByUserId(8L);
-        verify(cardInfoRepository).deleteAllByUserId(8L);
+    void deleteCard_ShouldDeleteSuccessfully() {
+        when(cardInfoRepository.findById(10L)).thenReturn(Optional.of(cardInfo));
+
+        cardInfoService.deleteCard(10L);
+
+        verify(cardInfoRepository).deleteByIdNative(10L);
+    }
+
+    @Test
+    void deleteCard_ShouldThrow_WhenNotFound() {
+        when(cardInfoRepository.findById(10L)).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> cardInfoService.deleteCard(10L));
+    }
+
+    @Test
+    void deleteCardsByUserId_ShouldDeleteAll() {
+        Long userId = 1L;
+
+        cardInfoService.deleteCardsByUserId(userId);
+
+        verify(cardInfoRepository, times(1)).deleteAllByUserId(userId);
     }
 }

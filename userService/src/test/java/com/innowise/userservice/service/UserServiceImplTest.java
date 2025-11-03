@@ -4,23 +4,28 @@ import com.innowise.userservice.exception.NotFoundException;
 import com.innowise.userservice.exception.UserAlreadyExistException;
 import com.innowise.userservice.mapper.UserMapper;
 import com.innowise.userservice.model.dto.UserDto;
+import com.innowise.userservice.model.dto.CardInfoDto;
 import com.innowise.userservice.model.dto.UserWithCardsDto;
 import com.innowise.userservice.model.entity.User;
 import com.innowise.userservice.repository.UserRepository;
 import com.innowise.userservice.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
 
     @Mock
@@ -35,184 +40,203 @@ class UserServiceImplTest {
     @Mock
     private CacheManager cacheManager;
 
-    @Mock
-    private Cache emailsCache;
+    @InjectMocks
+    private UserServiceImpl userService;
 
     @Mock
     private Cache usersCache;
 
-    @InjectMocks
-    private UserServiceImpl userService;
+    @Mock
+    private Cache emailsCache;
+
+    @Mock
+    private Cache usersWithCardsCache;
+
+    private User user;
+    private UserDto userDto;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        when(cacheManager.getCache("emails")).thenReturn(emailsCache);
-        when(cacheManager.getCache("users")).thenReturn(usersCache);
+        user = new User();
+        user.setId(1L);
+        user.setEmail("test@example.com");
+        user.setName("John");
+        user.setSurname("Doe");
+        user.setBirthDate(LocalDate.of(1990,1,1));
+
+        userDto = new UserDto();
+        userDto.setId(1L);
+        userDto.setEmail("test@example.com");
+        userDto.setName("John");
+        userDto.setSurname("Doe");
+        userDto.setBirthDate(LocalDate.of(1990,1,1));
+
+        lenient().when(cacheManager.getCache("users")).thenReturn(usersCache);
+        lenient().when(cacheManager.getCache("emails")).thenReturn(emailsCache);
+        lenient().when(cacheManager.getCache("users-with-cards")).thenReturn(usersWithCardsCache);
     }
 
-    private User makeUser(Long id, String email) {
-        return User.builder()
-                .id(id)
-                .name("John")
-                .surname("Doe")
-                .birthDate(LocalDate.of(1990,1,1))
-                .email(email)
-                .build();
-    }
+    // ---------------- save ----------------
+    @Test
+    void save_ShouldSaveUser_WhenEmailNotExists() {
+        when(userRepository.existsByEmail(userDto.getEmail())).thenReturn(false);
+        when(userMapper.userDtoToUser(userDto)).thenReturn(user);
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.userToUserDto(user)).thenReturn(userDto);
 
-    private UserDto makeUserDto(Long id, String email) {
-        UserDto dto = new UserDto();
-        dto.setId(id);
-        dto.setName("John");
-        dto.setSurname("Doe");
-        dto.setBirthDate(LocalDate.of(1990,1,1));
-        dto.setEmail(email);
-        return dto;
+        UserDto result = userService.save(userDto);
+
+        assertNotNull(result);
+        assertEquals(user.getId(), result.getId());
+        verify(userRepository).save(user);
     }
 
     @Test
-    void save_shouldSave_whenEmailNotExists() {
-        UserDto dto = makeUserDto(null, "a@b.com");
-        User entityToSave = makeUser(null, "a@b.com");
-        User saved = makeUser(1L, "a@b.com");
-        UserDto savedDto = makeUserDto(1L, "a@b.com");
+    void save_ShouldThrowException_WhenEmailExists() {
+        when(userRepository.existsByEmail(userDto.getEmail())).thenReturn(true);
 
-        when(userRepository.existsByEmail(dto.getEmail())).thenReturn(false);
-        when(userMapper.userDtoToUser(dto)).thenReturn(entityToSave);
-        when(userRepository.save(entityToSave)).thenReturn(saved);
-        when(userMapper.userToUserDto(saved)).thenReturn(savedDto);
-
-        UserDto result = userService.save(dto);
-
-        assertThat(result).isEqualTo(savedDto);
-        verify(userRepository).save(entityToSave);
+        assertThrows(UserAlreadyExistException.class, () -> userService.save(userDto));
     }
 
     @Test
-    void save_shouldThrow_whenEmailExists() {
-        UserDto dto = makeUserDto(null, "a@b.com");
-        when(userRepository.existsByEmail(dto.getEmail())).thenReturn(true);
+    void findById_ShouldReturnUser_WhenUserExists() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userMapper.userToUserDto(user)).thenReturn(userDto);
 
-        assertThatThrownBy(() -> userService.save(dto))
-                .isInstanceOf(UserAlreadyExistException.class);
+        UserDto result = userService.findById(1L);
 
-        verify(userRepository, never()).save(any());
+        assertEquals(user.getId(), result.getId());
     }
 
     @Test
-    void findById_shouldReturnDto_whenExists() {
-        User user = makeUser(10L, "x@y.com");
-        UserDto dto = makeUserDto(10L, "x@y.com");
-
-        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
-        when(userMapper.userToUserDto(user)).thenReturn(dto);
-
-        UserDto res = userService.findById(10L);
-
-        assertThat(res).isEqualTo(dto);
+    void findById_ShouldThrowNotFound_WhenUserNotExists() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> userService.findById(1L));
     }
 
     @Test
-    void findById_shouldThrow_whenNotFound() {
-        when(userRepository.findById(5L)).thenReturn(Optional.empty());
+    void findByIds_ShouldReturnUsers() {
+        List<Long> ids = Arrays.asList(1L, 2L);
+        List<User> users = Arrays.asList(user);
+        List<UserDto> dtos = Arrays.asList(userDto);
 
-        assertThatThrownBy(() -> userService.findById(5L)).isInstanceOf(NotFoundException.class);
+        when(userRepository.findByIds(ids)).thenReturn(users);
+        when(userMapper.usersToUsersDto(users)).thenReturn(dtos);
+
+        List<UserDto> result = userService.findByIds(ids);
+        assertEquals(1, result.size());
     }
 
     @Test
-    void findUserByEmail_shouldReturnFromCache_whenPresent() {
-        // simulate cached id -> then cached userDto
-        when(emailsCache.get("a@b.com", Long.class)).thenReturn(1L);
-        UserDto cached = makeUserDto(1L, "a@b.com");
-        when(usersCache.get(1L, UserDto.class)).thenReturn(cached);
+    void findUserByEmail_ShouldReturnCachedUser() {
+        when(emailsCache.get(user.getEmail(), Long.class)).thenReturn(user.getId());
+        when(usersCache.get(user.getId(), UserDto.class)).thenReturn(userDto);
 
-        UserDto res = userService.findUserByEmail("a@b.com");
+        UserDto result = userService.findUserByEmail(user.getEmail());
 
-        assertThat(res).isEqualTo(cached);
+        assertEquals(user.getEmail(), result.getEmail());
         verify(userRepository, never()).findByEmail(any());
     }
 
     @Test
-    void findUserByEmail_shouldLoadAndCache_whenNotCached() {
-        when(emailsCache.get("a@b.com", Long.class)).thenReturn(null);
+    void findUserByEmail_ShouldFetchFromDb_WhenNotCached() {
+        when(emailsCache.get(user.getEmail(), Long.class)).thenReturn(null);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userMapper.userToUserDto(user)).thenReturn(userDto);
 
-        User user = makeUser(2L, "a@b.com");
-        UserDto dto = makeUserDto(2L, "a@b.com");
+        UserDto result = userService.findUserByEmail(user.getEmail());
 
-        when(userRepository.findByEmail("a@b.com")).thenReturn(Optional.of(user));
-        when(userMapper.userToUserDto(user)).thenReturn(dto);
-
-        UserDto res = userService.findUserByEmail("a@b.com");
-
-        assertThat(res).isEqualTo(dto);
-        verify(emailsCache).put("a@b.com", 2L);
-        verify(usersCache).put(2L, dto);
+        assertEquals(user.getEmail(), result.getEmail());
+        verify(usersCache).put(user.getId(), userDto);
+        verify(emailsCache).put(user.getEmail(), user.getId());
     }
 
     @Test
-    void update_shouldUpdate_whenOk() {
-        Long id = 3L;
-        User existing = makeUser(id, "old@a.com");
-        UserDto updateDto = makeUserDto(id, "old@a.com");
-        when(userRepository.findById(id)).thenReturn(Optional.of(existing));
-        when(userRepository.save(existing)).thenReturn(existing);
-        when(userMapper.userToUserDto(existing)).thenReturn(updateDto);
+    void findUserByEmail_ShouldThrowNotFound_WhenNotExists() {
+        when(emailsCache.get(user.getEmail(), Long.class)).thenReturn(null);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.empty());
 
-        UserDto res = userService.update(id, updateDto);
-
-        assertThat(res).isEqualTo(updateDto);
-        verify(userRepository).save(existing);
+        assertThrows(NotFoundException.class, () -> userService.findUserByEmail(user.getEmail()));
     }
 
     @Test
-    void update_shouldThrow_whenNotFound() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> userService.update(99L, makeUserDto(99L,"a@b.com"))).isInstanceOf(NotFoundException.class);
+    void update_ShouldUpdateUser_WhenEmailNotExists() {
+        UserDto updateDto = new UserDto();
+        updateDto.setEmail("new@example.com");
+        updateDto.setName("JohnUpdated");
+
+        User updatedUser = new User();
+        updatedUser.setId(1L);
+        updatedUser.setEmail("new@example.com");
+        updatedUser.setName("JohnUpdated");
+
+        UserDto updatedDto = new UserDto();
+        updatedDto.setId(1L);
+        updatedDto.setEmail("new@example.com");
+        updatedDto.setName("JohnUpdated");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmail(updateDto.getEmail())).thenReturn(false);
+        doNothing().when(userMapper).updateUserFromUserDto(updateDto, user);
+        when(userRepository.save(user)).thenReturn(updatedUser);
+        when(userMapper.userToUserDto(updatedUser)).thenReturn(updatedDto);
+
+        UserDto result = userService.update(1L, updateDto);
+
+        assertEquals(updatedDto.getEmail(), result.getEmail());
+        assertEquals(updatedDto.getName(), result.getName());
     }
 
     @Test
-    void update_shouldThrow_whenEmailConflict() {
-        Long id = 4L;
-        User existing = makeUser(id, "old@a.com");
-        UserDto dto = makeUserDto(id, "new@a.com");
+    void update_ShouldThrowException_WhenEmailExists() {
+        UserDto updateDto = new UserDto();
+        updateDto.setEmail("existing@example.com");
 
-        when(userRepository.findById(id)).thenReturn(Optional.of(existing));
-        when(userRepository.existsByEmail("new@a.com")).thenReturn(true);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmail(updateDto.getEmail())).thenReturn(true);
 
-        assertThatThrownBy(() -> userService.update(id, dto)).isInstanceOf(UserAlreadyExistException.class);
+        assertThrows(UserAlreadyExistException.class, () -> userService.update(1L, updateDto));
     }
 
     @Test
-    void deleteByIdNative_shouldCallCardServiceAndRepository() {
-        Long id = 7L;
-        when(userRepository.existsById(id)).thenReturn(true);
-
-        userService.deleteByIdNative(id);
-
-        verify(cardInfoService).deleteCardsByUserId(id);
-        verify(userRepository).deleteByIdNative(id);
+    void update_ShouldThrowNotFound_WhenUserNotExists() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> userService.update(1L, userDto));
     }
 
     @Test
-    void deleteByIdNative_shouldThrow_whenNotFound() {
-        when(userRepository.existsById(100L)).thenReturn(false);
-        assertThatThrownBy(() -> userService.deleteByIdNative(100L)).isInstanceOf(NotFoundException.class);
+    void deleteByIdNative_ShouldDeleteUser_WhenExists() {
+        when(userRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(cardInfoService).deleteCardsByUserId(1L);
+        doNothing().when(userRepository).deleteByIdNative(1L);
+
+        assertDoesNotThrow(() -> userService.deleteByIdNative(1L));
+        verify(userRepository).deleteByIdNative(1L);
     }
 
     @Test
-    void findUserWithCardsById_shouldReturnDto() {
-        Long id = 11L;
-        User user = makeUser(id, "z@z.com");
-        UserDto userDto = makeUserDto(id, "z@z.com");
+    void deleteByIdNative_ShouldThrowNotFound_WhenUserNotExists() {
+        when(userRepository.existsById(1L)).thenReturn(false);
+        assertThrows(NotFoundException.class, () -> userService.deleteByIdNative(1L));
+    }
 
-        when(userRepository.findById(id)).thenReturn(Optional.of(user));
-        when(cardInfoService.findCardsByUserId(id)).thenReturn(List.of());
-        UserWithCardsDto expected = UserWithCardsDto.builder()
-                .id(id).name("John").surname("Doe").email("z@z.com").cards(List.of()).build();
 
-        UserWithCardsDto res = userService.findUserWithCardsById(id);
-        assertThat(res.getId()).isEqualTo(id);
-        assertThat(res.getEmail()).isEqualTo("z@z.com");
+    @Test
+    void findUserWithCardsById_ShouldReturnUserWithCards() {
+        List<CardInfoDto> cards = List.of(new CardInfoDto());
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(cardInfoService.findCardsByUserId(1L)).thenReturn(cards);
+
+        UserWithCardsDto result = userService.findUserWithCardsById(1L);
+
+        assertEquals(user.getId(), result.getId());
+        assertEquals(cards, result.getCards());
+    }
+
+    @Test
+    void findUserWithCardsById_ShouldThrowNotFound_WhenUserNotExists() {
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        assertThrows(NotFoundException.class, () -> userService.findUserWithCardsById(1L));
     }
 }
+

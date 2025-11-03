@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +30,6 @@ public class CardInfoServiceImpl implements CardInfoService {
     private final UserRepository userRepository;
     private final CardInfoMapper cardInfoMapper;
 
-    // ---------------------- CREATE ----------------------
     @Override
     @Caching(evict = {
             @CacheEvict(value = "cardInfo", allEntries = true),
@@ -50,7 +48,6 @@ public class CardInfoServiceImpl implements CardInfoService {
         return cardInfoMapper.cardInfoToCardInfoDto(savedCard);
     }
 
-    // ---------------------- READ ----------------------
     @Override
     @Cacheable(value = "cardInfo", key = "#id", condition = "#id != null")
     @Transactional(readOnly = true)
@@ -85,7 +82,6 @@ public class CardInfoServiceImpl implements CardInfoService {
                 .collect(Collectors.toList());
     }
 
-    // ---------------------- UPDATE ----------------------
     @Override
     @Caching(evict = {
             @CacheEvict(value = "cardInfo", key = "#id"),
@@ -118,7 +114,6 @@ public class CardInfoServiceImpl implements CardInfoService {
         return cardInfoMapper.cardInfoToCardInfoDto(updatedCard);
     }
 
-    // ---------------------- DELETE ----------------------
     @Override
     @Caching(evict = {
             @CacheEvict(value = "cardInfo", key = "#id"),
@@ -142,7 +137,6 @@ public class CardInfoServiceImpl implements CardInfoService {
         log.info("Cards deleted successfully for user ID: {}", userId);
     }
 
-    // ---------------------- VALIDATION ----------------------
     private void validateCardHolder(User user, String cardHolder) {
         String expectedHolder = user.getName() + " " + user.getSurname();
         String normalizedCardHolder = cardHolder.trim();

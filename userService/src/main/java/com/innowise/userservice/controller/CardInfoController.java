@@ -71,7 +71,7 @@ public class CardInfoController {
      * @return ResponseEntity containing list of user's cards and HTTP status 200 (OK)
      * @throws com.innowise.userservice.exception.NotFoundException if user with given ID is not found
      */
-    @GetMapping("/api/v1/users/{userId}/cards")
+    @GetMapping("/by-user/{userId}")
     public ResponseEntity<List<CardInfoDto>> findCardsByUserId(@PathVariable Long userId) {
         return ResponseEntity.ok(cardInfoService.findCardsByUserId(userId));
     }

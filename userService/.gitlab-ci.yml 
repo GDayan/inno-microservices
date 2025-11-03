@@ -1,0 +1,50 @@
+stages:
+  - build
+  - test
+  - code_analysis
+  - docker_build
+
+variables:
+  MAVEN_CLI_OPTS: "-B -DskipTests=false"
+  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # кэш Sonar
+  MAVEN_OPTS: "-Dmaven.repo.local=${CI_PROJECT_DIR}/.m2/repository"
+  DOCKER_DRIVER: overlay2
+
+cache:
+  paths:
+    - .m2/repository
+    - target
+
+build:
+  stage: build
+  image: maven:3.9.6-eclipse-temurin-21
+  script:
+    - echo "Building the project..."
+    - mvn $MAVEN_CLI_OPTS clean package -DskipTests
+  artifacts:
+    paths:
+      - target/*.jar
+
+test:
+  stage: test
+  image: maven:3.9.6-eclipse-temurin-21
+  script:
+    - echo "Running tests..."
+    - mvn test
+
+code_analysis:
+  stage: code_analysis
+  image: maven:3.9.6-eclipse-temurin-21
+  script:
+    - echo "Running SonarQube analysis..."
+    - mvn sonar:sonar -Dsonar.projectKey=${CI_PROJECT_NAME} -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.login=${SONAR_TOKEN}
+
+docker_build:
+  stage: docker_build
+  image: docker:24.0.2
+  services:
+    - docker:24.0.2-dind
+  script:
+    - echo "Building Docker image..."
+    - docker build -t ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} .
+    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}

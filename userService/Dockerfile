@@ -1,4 +1,4 @@
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:21-jdk
 
 ARG JAR_FILE=target/userService-1.0-SNAPSHOT.jar
 

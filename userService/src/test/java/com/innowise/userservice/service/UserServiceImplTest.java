@@ -76,7 +76,6 @@ class UserServiceImplTest {
         lenient().when(cacheManager.getCache("users-with-cards")).thenReturn(usersWithCardsCache);
     }
 
-    // ---------------- save ----------------
     @Test
     void save_ShouldSaveUser_WhenEmailNotExists() {
         when(userRepository.existsByEmail(userDto.getEmail())).thenReturn(false);

@@ -59,6 +59,7 @@ DATABASECHANGELOGLOCK*
 application*.properties
 application*.yml
 *.env
+.env
 
 # -----------------------
 # Остальное

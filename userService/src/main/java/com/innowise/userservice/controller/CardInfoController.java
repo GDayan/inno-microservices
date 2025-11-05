@@ -20,87 +20,52 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/cards")
+@RequestMapping("/api/v1/users/{userId}/cards")
 public class CardInfoController {
 
     private final CardInfoService cardInfoService;
 
-    /**
-     * Creates a new payment card.
-     *
-     * @param cardInfoDto the card data to create
-     * @return ResponseEntity containing the created card and HTTP status 201 (CREATED)
-     * @throws com.innowise.userservice.exception.NotFoundException if associated user is not found
-     * @throws com.innowise.userservice.exception.CardValidationException if card validation fails
-     */
     @PostMapping
-    public ResponseEntity<CardInfoDto> saveCard(@RequestBody CardInfoDto cardInfoDto) {
+    public ResponseEntity<CardInfoDto> saveCard(
+            @PathVariable Long userId,
+            @RequestBody CardInfoDto cardInfoDto
+    ) {
+        cardInfoDto.setUserId(userId);
         CardInfoDto createdCard = cardInfoService.saveCard(cardInfoDto);
         return new ResponseEntity<>(createdCard, HttpStatus.CREATED);
     }
 
-    /**
-     * Retrieves a card by its ID.
-     *
-     * @param id the ID of the card to retrieve
-     * @return ResponseEntity containing the card and HTTP status 200 (OK)
-     * @throws com.innowise.userservice.exception.NotFoundException if card with given ID is not found
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<CardInfoDto> findCardById(@PathVariable("id") Long id) {
-        CardInfoDto card = cardInfoService.findCardById(id);
-        return ResponseEntity.ok(card);
-    }
-
-    /**
-     * Retrieves multiple cards by their IDs.
-     *
-     * @param ids list of card IDs to retrieve
-     * @return ResponseEntity containing list of cards and HTTP status 200 (OK)
-     */
     @GetMapping
-    public ResponseEntity<List<CardInfoDto>> findCardsByIds(@RequestParam("ids") List<Long> ids) {
-        List<CardInfoDto> cards = cardInfoService.findCardsByIds(ids);
-        return ResponseEntity.ok(cards);
-    }
-
-    /**
-     * Retrieves all cards associated with a specific user.
-     *
-     * @param userId the user ID to retrieve cards for
-     * @return ResponseEntity containing list of user's cards and HTTP status 200 (OK)
-     * @throws com.innowise.userservice.exception.NotFoundException if user with given ID is not found
-     */
-    @GetMapping("/by-user/{userId}")
     public ResponseEntity<List<CardInfoDto>> findCardsByUserId(@PathVariable Long userId) {
         return ResponseEntity.ok(cardInfoService.findCardsByUserId(userId));
     }
 
-    /**
-     * Updates an existing card.
-     *
-     * @param id the ID of the card to update
-     * @param cardInfoDto the updated card data
-     * @return ResponseEntity containing the updated card and HTTP status 200 (OK)
-     * @throws com.innowise.userservice.exception.NotFoundException if card or associated user is not found
-     * @throws com.innowise.userservice.exception.CardValidationException if card validation fails
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<CardInfoDto> updateCard(@PathVariable("id") Long id, @RequestBody CardInfoDto cardInfoDto) {
-        CardInfoDto updatedCard = cardInfoService.updateCard(id, cardInfoDto);
-        return ResponseEntity.ok(updatedCard);
+    @GetMapping("/{cardId}")
+    public ResponseEntity<CardInfoDto> findCardById(
+            @PathVariable Long userId,
+            @PathVariable Long cardId
+    ) {
+        CardInfoDto card = cardInfoService.findCardById(cardId);
+        return ResponseEntity.ok(card);
     }
 
-    /**
-     * Deletes a card by its ID.
-     *
-     * @param id the ID of the card to delete
-     * @return ResponseEntity with no content and HTTP status 204 (NO_CONTENT)
-     * @throws com.innowise.userservice.exception.NotFoundException if card with given ID is not found
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCard(@PathVariable("id") Long id) {
-        cardInfoService.deleteCard(id);
+    @PutMapping("/{cardId}")
+    public ResponseEntity<CardInfoDto> updateCard(
+            @PathVariable Long userId,
+            @PathVariable Long cardId,
+            @RequestBody CardInfoDto cardInfoDto
+    ) {
+        cardInfoDto.setUserId(userId);
+        CardInfoDto updated = cardInfoService.updateCard(cardId, cardInfoDto);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{cardId}")
+    public ResponseEntity<Void> deleteCard(
+            @PathVariable Long userId,
+            @PathVariable Long cardId
+    ) {
+        cardInfoService.deleteCard(cardId);
         return ResponseEntity.noContent().build();
     }
 }

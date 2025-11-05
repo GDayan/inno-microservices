@@ -113,16 +113,17 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Retrieves a user along with all their cards.
-     * Data may be cached in Redis.
-     *
-     * @param id the ID of the user to retrieve with their associated cards
-     * @return ResponseEntity containing the user with cards and HTTP status 200 (OK)
-     */
-    @GetMapping("/{id}/with-cards")
-    public ResponseEntity<UserWithCardsDto> findUserWithCardsById(@PathVariable("id") Long id) {
-        UserWithCardsDto userWithCards = userService.findUserWithCardsById(id);
-        return ResponseEntity.ok(userWithCards);
+    @GetMapping("/{userId}")
+    public ResponseEntity<?> findUserById(
+            @PathVariable Long userId,
+            @RequestParam(name = "include", required = false) String include
+    ) {
+        if ("cards".equals(include)) {
+            UserWithCardsDto userWithCards = userService.findUserWithCardsById(userId);
+            return ResponseEntity.ok(userWithCards);
+        }
+
+        UserDto user = userService.findById(userId);
+        return ResponseEntity.ok(user);
     }
 }

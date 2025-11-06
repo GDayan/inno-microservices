@@ -2,7 +2,9 @@ stages:
   - build
   - test
   - code_analysis
-  - docker_build
+  - security_scan
+  - build_image
+  - deploy
 
 variables:
   MAVEN_CLI_OPTS: "-B -DskipTests=false"

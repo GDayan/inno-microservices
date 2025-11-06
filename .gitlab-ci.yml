@@ -15,7 +15,7 @@ variables:
 cache:
   paths:
     - .m2/repository
-    - target
+    - userService/target
 
 build:
   stage: build
@@ -25,7 +25,7 @@ build:
     - mvn $MAVEN_CLI_OPTS clean package -DskipTests
   artifacts:
     paths:
-      - target/*.jar
+      - userService/target/*.jar
 
 test:
   stage: test
@@ -48,5 +48,5 @@ docker_build:
     - docker:24.0.2-dind
   script:
     - echo "Building Docker image..."
-    - docker build -t ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} .
+    - docker build -t ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} ./userService
     - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}

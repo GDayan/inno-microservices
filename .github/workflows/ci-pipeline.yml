@@ -75,4 +75,4 @@ steps:
     run: |
       docker tag userService:latest dayan78/userservice:${GITHUB_SHA::8}
       docker push dayan78/userservice:${GITHUB_SHA::8}
-  ```
+

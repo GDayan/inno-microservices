@@ -50,7 +50,6 @@ jobs:
             -Dsonar.organization=gdayan \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -pl userService
         working-directory: ./userService
 
       - name: Build Docker Image

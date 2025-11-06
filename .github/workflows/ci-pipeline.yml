@@ -63,5 +63,5 @@ jobs:
 
       - name: Push Docker Image
         run: |
-          docker tag userService:latest dayan78/userservice:${GITHUB_SHA::8}
+          docker tag userservice:latest dayan78/userservice:${GITHUB_SHA::8}
           docker push dayan78/userservice:${GITHUB_SHA::8}

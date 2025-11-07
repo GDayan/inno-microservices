@@ -104,14 +104,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
+    @NonNull
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             @NonNull MethodArgumentNotValidException ex,
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode status,
-            @NonNull WebRequest request)  {
-
+            @NonNull WebRequest request) {
         log.warn("Validation failed for request: {}", request.getDescription(false));
-
         Map<String, String> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
@@ -122,9 +121,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                 : "Invalid value",
                         (existing, replacement) -> existing
                 ));
-
         String path = ((ServletWebRequest) request).getRequest().getRequestURI();
-
         ErrorApiDto error = ErrorApiDto.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
@@ -134,7 +131,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .errors(fieldErrors)
                 .documentationUrl("/api/docs/validation-errors")
                 .build();
-
         return ResponseEntity.badRequest().body(error);
     }
 

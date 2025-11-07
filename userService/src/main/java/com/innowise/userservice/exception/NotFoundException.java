@@ -8,6 +8,9 @@ import com.innowise.userservice.util.Constant;
  */
 public class NotFoundException extends RuntimeException {
     private static final long serialVersionUID = 1L;
+    public NotFoundException(String message) {
+        super(message);
+    }
 
     public NotFoundException(String resource, Long id) {
         super(String.format(Constant.NOT_FOUND_BY_ID, resource, id));

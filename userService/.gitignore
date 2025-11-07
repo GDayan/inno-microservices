@@ -1,0 +1,74 @@
+# -----------------------
+# ОС
+# -----------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------
+# IDE
+# -----------------------
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# VS Code
+.vscode/
+
+# -----------------------
+# Сборка
+# -----------------------
+# Maven
+target/
+
+# Gradle
+/build/
+.gradle/
+
+# -----------------------
+# Логи и временные файлы
+# -----------------------
+*.log
+*.tmp
+*.bak
+*.swp
+
+# -----------------------
+# Spring Boot
+# -----------------------
+# Файлы приложения
+*.jar
+*.war
+*.ear
+
+# Liquibase
+DATABASECHANGELOG*
+DATABASECHANGELOGLOCK*
+
+# -----------------------
+# Конфиденциальные файлы
+# -----------------------
+# Файлы настроек с паролями
+application*.properties
+application*.yml
+*.env
+.env
+
+# -----------------------
+# Остальное
+# -----------------------
+.idea/
+*.class
+
+# Gitignore, docs, mvnw
+userService/.gitignore
+userService/HELP.md
+userService/mvnw
+userService/mvnw.cmd

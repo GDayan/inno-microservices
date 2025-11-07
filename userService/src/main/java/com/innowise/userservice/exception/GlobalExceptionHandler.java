@@ -7,13 +7,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-import org.springframework.validation.FieldError;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -27,65 +27,60 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorApiDto> handleCardValidationException(
             CardValidationException ex, HttpServletRequest request) {
         log.warn("Card validation failed: {}", ex.getMessage());
-        ErrorApiDto error = buildErrorResponse(
+        return ResponseEntity.badRequest().body(buildErrorResponse(
                 HttpStatus.BAD_REQUEST,
                 "Card Validation Failed",
                 ex.getMessage(),
                 request
-        );
-        return ResponseEntity.badRequest().body(error);
+        ));
     }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorApiDto> handleNotFoundException(
             NotFoundException ex, HttpServletRequest request) {
         log.info("Resource not found: {}", ex.getMessage());
-        ErrorApiDto error = buildErrorResponse(
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(buildErrorResponse(
                 HttpStatus.NOT_FOUND,
                 "Resource Not Found",
                 ex.getMessage(),
                 request
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        ));
     }
 
-    @ExceptionHandler({UserAlreadyExistException.class})
+    @ExceptionHandler(UserAlreadyExistException.class)
     public ResponseEntity<ErrorApiDto> handleUserAlreadyExistException(
             RuntimeException ex, HttpServletRequest request) {
         log.warn("User creation conflict: {}", ex.getMessage());
-        ErrorApiDto error = buildErrorResponse(
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(buildErrorResponse(
                 HttpStatus.CONFLICT,
                 "User Already Exists",
                 ex.getMessage(),
                 request
-        );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        ));
     }
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorApiDto> handleBadRequestException(
             BadRequestException ex, HttpServletRequest request) {
         log.warn("Bad request: {}", ex.getMessage());
-        ErrorApiDto error = buildErrorResponse(
+        return ResponseEntity.badRequest().body(buildErrorResponse(
                 HttpStatus.BAD_REQUEST,
                 "Bad Request",
                 ex.getMessage(),
                 request
-        );
-        return ResponseEntity.badRequest().body(error);
+        ));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorApiDto> handleIllegalArgumentException(
             IllegalArgumentException ex, HttpServletRequest request) {
         log.warn("Illegal argument: {}", ex.getMessage());
-        ErrorApiDto error = buildErrorResponse(
+        return ResponseEntity.badRequest().body(buildErrorResponse(
                 HttpStatus.BAD_REQUEST,
                 "Invalid Argument",
                 ex.getMessage(),
                 request
-        );
-        return ResponseEntity.badRequest().body(error);
+        ));
     }
 
     @Override
@@ -123,7 +118,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ));
 
         String path = extractPath(request);
-
         ErrorApiDto error = ErrorApiDto.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
@@ -148,13 +142,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorApiDto> handleGeneralException(
             Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception occurred: ", ex);
-        ErrorApiDto error = buildErrorResponse(
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(buildErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error",
                 "An unexpected error occurred",
                 request
-        );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        ));
     }
 
     private ErrorApiDto buildErrorResponse(HttpStatus status, String error,

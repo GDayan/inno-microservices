@@ -23,7 +23,7 @@ public class ErrorApiDto {
     private String error;
     private String message;
     private String path;
-    private String traceId; // For distributed tracing
+    private String traceId;
 
     @Builder.Default
     @JsonInclude(JsonInclude.Include.NON_EMPTY)

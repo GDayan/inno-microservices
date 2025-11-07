@@ -6,12 +6,4 @@ public class CardValidationException extends RuntimeException {
     public CardValidationException(String message) {
         super(message);
     }
-
-    public CardValidationException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public CardValidationException(String format, Object... args) {
-        super(String.format(format, args));
-    }
 }

@@ -1,5 +1,6 @@
 package com.innowise.userservice.controller;
 
+import com.innowise.userservice.exception.BadRequestException;
 import com.innowise.userservice.model.dto.UserDto;
 import com.innowise.userservice.model.dto.UserWithCardsDto;
 import com.innowise.userservice.service.UserService;
@@ -52,24 +53,21 @@ public class UserController {
      * @return ResponseEntity containing user data or list of users
      */
     @GetMapping
-    public ResponseEntity<?> find(
+    public ResponseEntity<Object> find(
             @RequestParam(required = false) List<Long> ids,
             @RequestParam(required = false) String email
     ) {
         if (email != null && ids != null) {
             return ResponseEntity.badRequest().body("Please provide either 'email' OR 'ids', not both.");
         }
-
         if (email != null) {
             UserDto user = userService.findUserByEmail(email);
             return ResponseEntity.ok(user);
         }
-
         if (ids != null && !ids.isEmpty()) {
             List<UserDto> users = userService.findByIds(ids);
             return ResponseEntity.ok(users);
         }
-
         return ResponseEntity.badRequest().body("Please specify either 'email' or 'ids' query parameter");
     }
 
@@ -114,7 +112,7 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<?> findUserById(
+    public ResponseEntity<Object> findUserById(
             @PathVariable Long userId,
             @RequestParam(name = "include", required = false) String include
     ) {
@@ -122,8 +120,8 @@ public class UserController {
             UserWithCardsDto userWithCards = userService.findUserWithCardsById(userId);
             return ResponseEntity.ok(userWithCards);
         }
-
         UserDto user = userService.findById(userId);
         return ResponseEntity.ok(user);
     }
+
 }

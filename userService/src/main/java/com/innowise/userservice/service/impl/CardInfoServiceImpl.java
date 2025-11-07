@@ -63,15 +63,13 @@ public class CardInfoServiceImpl implements CardInfoService {
     @Transactional(readOnly = true)
     public List<CardInfoDto> findCardsByUserId(Long userId) {
         log.info("Fetching cards for user ID {} from DB (cache miss)", userId);
-
         if (!userRepository.existsById(userId)) {
             throw new NotFoundException("User", userId);
         }
-
         List<CardInfo> cards = cardInfoRepository.findByUserId(userId);
         return cards.stream()
                 .map(cardInfoMapper::cardInfoToCardInfoDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -79,7 +77,7 @@ public class CardInfoServiceImpl implements CardInfoService {
     public List<CardInfoDto> findCardsByIds(List<Long> ids) {
         return cardInfoRepository.findByIds(ids).stream()
                 .map(cardInfoMapper::cardInfoToCardInfoDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -121,7 +119,7 @@ public class CardInfoServiceImpl implements CardInfoService {
     })
     @Transactional
     public void deleteCard(Long id) {
-        CardInfo card = cardInfoRepository.findById(id)
+        cardInfoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Card", id));
         cardInfoRepository.deleteByIdNative(id);
     }

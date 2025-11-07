@@ -1,5 +1,6 @@
 package com.innowise.userservice.service.impl;
 
+import com.innowise.userservice.exception.BadRequestException;
 import com.innowise.userservice.exception.NotFoundException;
 import com.innowise.userservice.exception.UserAlreadyExistException;
 import com.innowise.userservice.mapper.UserMapper;
@@ -41,10 +42,13 @@ public class UserServiceImpl implements UserService {
     public UserDto save(UserDto userDto) {
         log.info("Saving new user with email: {}", userDto.getEmail());
 
-        if (userRepository.existsByEmail(userDto.getEmail())) {
-            throw new UserAlreadyExistException(userDto.getEmail());
+        if (!userDto.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw BadRequestException.invalidEmail(userDto.getEmail());
         }
 
+        if (userRepository.existsByEmail(userDto.getEmail())) {
+            throw new UserAlreadyExistException("User already exists", userDto.getEmail());
+        }
         User user = userMapper.userDtoToUser(userDto);
         User savedUser = userRepository.save(user);
 
@@ -74,6 +78,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserDto findUserByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw BadRequestException.missingParameter("email");
+        }
         Long id = cacheManager.getCache("emails").get(email, Long.class);
         if (id != null) {
             UserDto cachedUser = cacheManager.getCache("users").get(id, UserDto.class);
@@ -103,7 +110,7 @@ public class UserServiceImpl implements UserService {
 
         if (!existingUser.getEmail().equals(userDto.getEmail()) &&
                 userRepository.existsByEmail(userDto.getEmail())) {
-            throw new UserAlreadyExistException(userDto.getEmail());
+            throw new UserAlreadyExistException("User already exists", userDto.getEmail());
         }
 
         userMapper.updateUserFromUserDto(userDto, existingUser);

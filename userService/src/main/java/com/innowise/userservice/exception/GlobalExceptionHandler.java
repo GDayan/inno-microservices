@@ -6,7 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -89,13 +89,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    @NonNull
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            @NonNull MethodArgumentNotValidException ex,
-            @NonNull HttpHeaders headers,
-            @NonNull HttpStatusCode status,
-            @NonNull WebRequest request) {
-        log.warn("Validation failed for request: {}", request.getDescription(false));
+            @Nullable MethodArgumentNotValidException ex,
+            @Nullable HttpHeaders headers,
+            @Nullable HttpStatusCode status,
+            @Nullable WebRequest request) {
+
+        String requestDescription = request != null ? request.getDescription(false) : "unknown";
+        log.warn("Validation failed for request: {}", requestDescription);
+
+        if (ex == null || ex.getBindingResult() == null) {
+            String path = extractPath(request);
+            ErrorApiDto error = ErrorApiDto.builder()
+                    .timestamp(LocalDateTime.now())
+                    .status(HttpStatus.BAD_REQUEST.value())
+                    .error("Validation Failed")
+                    .message("Validation error details are unavailable")
+                    .path(path)
+                    .documentationUrl("/api/docs/validation-errors")
+                    .build();
+            return ResponseEntity.badRequest().body(error);
+        }
+
         Map<String, String> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
@@ -106,7 +121,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                 : "Invalid value",
                         (existing, replacement) -> existing
                 ));
-        String path = ((ServletWebRequest) request).getRequest().getRequestURI();
+
+        String path = extractPath(request);
+
         ErrorApiDto error = ErrorApiDto.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
@@ -116,7 +133,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .errors(fieldErrors)
                 .documentationUrl("/api/docs/validation-errors")
                 .build();
+
         return ResponseEntity.badRequest().body(error);
+    }
+
+    private String extractPath(@Nullable WebRequest request) {
+        if (request instanceof ServletWebRequest servletRequest) {
+            return servletRequest.getRequest().getRequestURI();
+        }
+        return "/unknown";
     }
 
     @ExceptionHandler(Exception.class)

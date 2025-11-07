@@ -127,8 +127,10 @@ class CardInfoServiceImplTest {
 
     @Test
     void findCardsByUserId_ShouldThrow_WhenUserNotFound() {
-        when(userRepository.existsById(user.getId())).thenReturn(false);
-        assertThrows(NotFoundException.class, () -> cardInfoService.findCardsByUserId(user.getId()));
+        Long userId = user.getId();
+        when(userRepository.existsById(userId)).thenReturn(false);
+
+        assertThrows(NotFoundException.class, () -> cardInfoService.findCardsByUserId(userId));
     }
 
     @Test

@@ -1,7 +1,5 @@
 package com.innowise.userservice.exception;
 
-import com.innowise.userservice.util.Constant;
-
 public class UserAlreadyExistException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 

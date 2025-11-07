@@ -1,6 +1,5 @@
 package com.innowise.userservice.controller;
 
-import com.innowise.userservice.exception.BadRequestException;
 import com.innowise.userservice.model.dto.UserDto;
 import com.innowise.userservice.model.dto.UserWithCardsDto;
 import com.innowise.userservice.service.UserService;

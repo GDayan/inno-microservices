@@ -26,11 +26,6 @@ import java.util.Map;
 @EnableCaching
 @Configuration
 public class RedisConfig {
-
-    /**
-     * Глобальный ObjectMapper для REST
-     * Используется Spring MVC для сериализации JSON в контроллерах
-     */
     @Bean
     @Primary
     public ObjectMapper objectMapper() {
@@ -47,10 +42,6 @@ public class RedisConfig {
                 .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
-    /**
-     * ObjectMapper специально для Redis
-     * Включаем полиморфизм -> @class, чтобы GenericJackson2JsonRedisSerializer корректно десериализовал CardInfoDto
-     */
     @Bean(name = "redisObjectMapper")
     public ObjectMapper redisObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
@@ -66,9 +57,6 @@ public class RedisConfig {
         return mapper;
     }
 
-    /**
-     * RedisTemplate с сериализацией ключей и значений
-     */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(
             RedisConnectionFactory connectionFactory,
@@ -89,10 +77,6 @@ public class RedisConfig {
         return template;
     }
 
-    /**
-     * CacheManager для Spring Cache
-     * Использует тот же redisObjectMapper
-     */
     @Bean
     public CacheManager cacheManager(
             RedisConnectionFactory connectionFactory,
@@ -105,7 +89,6 @@ public class RedisConfig {
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(valueSerializer));
 
-        // Можно задать персональные TTL для разных кэшей
         Map<String, RedisCacheConfiguration> caches = new HashMap<>();
         caches.put("cardInfo", defaultConfig.entryTtl(Duration.ofMinutes(10)));
         caches.put("users", defaultConfig.entryTtl(Duration.ofMinutes(5)));

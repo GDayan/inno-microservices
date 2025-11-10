@@ -1,44 +1,38 @@
 package com.innowise.authenticationService.service;
 
-import com.innowise.authenticationService.model.User;
+import com.innowise.authenticationService.model.dto.request.LoginRequest;
+import com.innowise.authenticationService.model.dto.request.RefreshRequest;
+import com.innowise.authenticationService.model.dto.request.RegisterRequest;
+import com.innowise.authenticationService.model.dto.response.TokenResponse;
+import com.innowise.authenticationService.model.entity.User;
 
 public interface AuthService {
 
     /**
-     * Registers a new user with the given username and password.
-     * The password will be automatically hashed using BCrypt.
-     *
-     * @param username The username of the new user
-     * @param rawPassword The plaintext password of the new user
-     * @return The saved User entity
+     * Регистрация нового пользователя
+     * @param req данные регистрации (логин и пароль)
      */
-    User register(String username, String rawPassword);
+    void register(RegisterRequest req);
 
     /**
-     * Authenticates a user using username and password.
-     *
-     * @param username The username of the user
-     * @param rawPassword The plaintext password of the user
-     * @return JWT access token
-     * @throws RuntimeException if the credentials are invalid
+     * Логин пользователя и выдача JWT токенов
+     * @param req данные логина
+     * @return access и refresh токены
      */
-    String login(String username, String rawPassword);
+    TokenResponse login(LoginRequest req);
 
     /**
-     * Validates a JWT token.
-     *
-     * @param token The JWT token to validate
-     * @return true if the token is valid, false otherwise
+     * Обновление JWT токенов по refresh-токену
+     * @param request refresh токен
+     * @return новые access и refresh токены
      */
-    boolean validateToken(String token);
+    TokenResponse refresh(RefreshRequest request);
 
     /**
-     * Refreshes an access token using a refresh token.
-     *
-     * @param refreshToken The refresh token
-     * @return A new access token
-     * @throws RuntimeException if the refresh token is invalid
+     * Проверка валидности access токена
+     * @param token access токен
+     * @return true если токен валиден
      */
-    String refreshToken(String refreshToken);
+    boolean validateAccessToken(String token);
 }
 

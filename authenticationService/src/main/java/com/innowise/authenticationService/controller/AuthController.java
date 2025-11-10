@@ -1,46 +1,44 @@
 package com.innowise.authenticationService.controller;
 
-import com.innowise.authenticationService.dto.request.AuthRequest;
-import com.innowise.authenticationService.dto.request.TokenRequest;
-import com.innowise.authenticationService.dto.response.JwtResponse;
+import com.innowise.authenticationService.model.dto.request.LoginRequest;
+import com.innowise.authenticationService.model.dto.request.RefreshRequest;
+import com.innowise.authenticationService.model.dto.request.RegisterRequest;
+import com.innowise.authenticationService.model.dto.response.TokenResponse;
 import com.innowise.authenticationService.service.AuthService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Collections;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
+
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
+    public AuthController(AuthService authService) { this.authService = authService; }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody AuthRequest request) {
-        authService.register(request.getUsername(), request.getPassword());
-        return ResponseEntity.ok("User registered");
+    public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
+        authService.register(req);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest request) {
-        String token = authService.login(request.getUsername(), request.getPassword());
-        return ResponseEntity.ok(new JwtResponse(token));
-    }
-
-    @PostMapping("/validate")
-    public ResponseEntity<?> validate(@RequestBody TokenRequest tokenRequest) {
-        boolean valid = authService.validateToken(tokenRequest.getToken());
-        return ResponseEntity.ok(valid);
+    public ResponseEntity<TokenResponse> login(@RequestBody LoginRequest req) {
+        TokenResponse tokens = authService.login(req);
+        return ResponseEntity.ok(tokens);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@RequestBody TokenRequest tokenRequest) {
-        String newToken = authService.refreshToken(tokenRequest.getToken());
-        return ResponseEntity.ok(new JwtResponse(newToken));
+    public ResponseEntity<TokenResponse> refresh(@RequestBody RefreshRequest req) {
+        TokenResponse tokens = authService.refresh(req);
+        return ResponseEntity.ok(tokens);
+    }
+
+    @GetMapping("/validate")
+    public ResponseEntity<?> validate(@RequestParam("token") String token) {
+        boolean ok = authService.validateAccessToken(token);
+        return ResponseEntity.ok().body(Collections.singletonMap("valid", ok));
     }
 }
-
